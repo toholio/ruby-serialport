@@ -57,28 +57,12 @@ sp_get_fd(obj)
 }
 
 static VALUE
-sp_new(class, fd)
-  VALUE class;
-  int fd;
-{
-  OpenFile *fp;
-  NEWOBJ(sp, struct RFile);
-  OBJSETUP(sp, class, T_FILE);
-  MakeOpenFile(sp, fp);
-  fp->f = rb_fdopen(fd, "r+");
-  fp->mode = FMODE_READWRITE | FMODE_SYNC;
- 
-  return (VALUE)sp;
-}
-
-static VALUE sp_init(class, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
+sp_new(class, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
   VALUE class, _num_port, _data_rate, _data_bits, _parity, _stop_bits;
 {
+  OpenFile *fp;
   int fd;
-  struct termios params;
   int num_port;
-  int data_bits;
-  int data_rate;
   char *ports[] = { 
 #if defined(linux)
   "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3"
@@ -92,6 +76,11 @@ static VALUE sp_init(class, _num_port, _data_rate, _data_bits, _stop_bits, _pari
   "/dev/ttyf1", "/dev/ttyf2", "/dev/ttyf3", "/dev/ttyf4"
 #endif
   };
+  
+  NEWOBJ(sp, struct RFile);
+  OBJSETUP(sp, class, T_FILE);
+  MakeOpenFile(sp, fp);
+  
 
   Check_Type(_num_port, T_FIXNUM);
   Check_Type(_data_rate, T_FIXNUM);
@@ -105,6 +94,23 @@ static VALUE sp_init(class, _num_port, _data_rate, _data_bits, _stop_bits, _pari
 
   if (fd == -1)
     rb_sys_fail(ports[num_port]);
+
+  
+  fp->f = rb_fdopen(fd, "r+");
+  fp->mode = FMODE_READWRITE|FMODE_SYNC;
+ 
+  return (VALUE)sp;
+}
+
+static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
+  VALUE self, _num_port, _data_rate, _data_bits, _parity, _stop_bits;
+{
+  int fd;
+  struct termios params;
+  int data_bits;
+  int data_rate;
+
+  fd = sp_get_fd(self);
 
   switch(FIX2INT(_data_rate)) {
     case 50:    data_rate = B50; break;
@@ -130,6 +136,9 @@ static VALUE sp_init(class, _num_port, _data_rate, _data_bits, _stop_bits, _pari
 #endif
 #ifdef B115200
     case 115200: data_rate = B115200; break;
+#endif
+#ifdef B230400
+    case 230400: data_rate = B230400; break;
 #endif
 
     default:
@@ -199,11 +208,15 @@ static VALUE sp_init(class, _num_port, _data_rate, _data_bits, _stop_bits, _pari
   params.c_lflag = 0; 
   cfsetispeed(&params, data_rate);
   cfsetospeed(&params, data_rate);
-  tcsetattr(fd, TCSAFLUSH, &params);
+
+  params.c_cc[VMIN] = 1;
+  params.c_cc[VTIME] = 0;
+
 
   /* enable blocking read */
   fcntl(fd, F_SETFL, 0);
-  /*fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);*/
+/*  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK); */
+  tcsetattr(fd, TCSANOW, &params);
 #if 0
   tcsetattr(fd, TCSANOW, &params);
   params.c_cflag = CS8 | CLOCAL | CREAD;
@@ -213,8 +226,8 @@ static VALUE sp_init(class, _num_port, _data_rate, _data_bits, _stop_bits, _pari
   tcsetattr(fd, TCSAFLUSH, &params);
   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);
 #endif
-
-  return sp_new(class, fd); 
+  /* return self; */
+  return Qnil;
 }
 static VALUE sp_set_flow_control(self, val)
   VALUE self, val;
@@ -379,6 +392,7 @@ sp_signals(self)
   rb_hash_aset(hash, rb_str_new2("ri"), sp_get_ri(self));
   return hash;
 }
+/*
 static VALUE
 sp_dispo(self)
   VALUE self;
@@ -390,15 +404,17 @@ sp_dispo(self)
 
   return INT2FIX(ret);
 }
+*/
 void Init_serialport() {
   
   cSerialPort = rb_define_class("SerialPort", rb_cIO);
-  rb_define_singleton_method(cSerialPort, "new", sp_init, 5);
+  rb_define_singleton_method(cSerialPort, "new", sp_new, 5);
+  rb_define_method(cSerialPort, "initialize", sp_init, 5);
 
   rb_define_method(cSerialPort, "flow_control=", sp_set_flow_control, 1);
   rb_define_method(cSerialPort, "flow_control", sp_get_flow_control, 0);
 
-  rb_define_method(cSerialPort, "dispo", sp_dispo, 0);
+/*  rb_define_method(cSerialPort, "dispo", sp_dispo, 0);*/
 
   rb_define_method(cSerialPort, "break", sp_break, 1);
  
