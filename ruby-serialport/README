@@ -1,0 +1,93 @@
+-----Ruby/SerialPort-----
+
+-- Changelog --
+ 
+0.1 => 14/03/2002:      First release
+
+
+-- Description --
+
+Ruby/SerialPort is a Ruby's library that allow you to communicate via the RS232 port.
+This class also gives you more low-level functions to check current state of the signals on the line.
+Currently only work on POSIX system, but more versions are planned.
+
+
+-- Installation --
+
+$ ruby extconf.rb
+$ make
+$ make install
+
+
+-- Testing --
+
+* test/miniterm.rb
+
+Ruby's copy of the miniterm.c !
+
+
+-- API --
+       
+  **** Class SerialPort, Parent IO ****
+
+    ** Class methods **
+
+      * new(port_num, baudrate, databits, stopbits, parity) -> aSerialPort
+
+        port_num -> anInteger: port number, 0 for first port which is "/dev/ttyS0" on GNU/Linux,
+              or  aString:   file name of the device (ex: "/dev/ttyS2" on GNU/Linux)
+
+        baudrate -> anInteger: from 50 to 230400, depends on platform.
+
+        databits -> anInteger: from 5 to 8
+
+        stopbits -> anInteger: 1 or 2
+
+        parity -> anInteger: SerialPort::NONE, SerialPort::EVEN, SerialPort::ODD, SerialPort::MARK, SerialPort::SPACE 
+
+        Raise an argError on bad argument.
+
+      Return an instance of SerialPort.
+
+    ** Instance methods **
+
+      * break(time) -> nil
+        
+        Send a break for the given time.
+        
+        time -> anInteger: tenths of second for the break
+
+      * signals() -> anHash
+
+        Return an array with the state on each line status bits, 
+    	ie "rts", "dtr", "cts", "dsr", "dcd", "ri".
+
+      * flow_control() -> anInteger
+      * flow_control=(anInteger) -> anInteger
+
+        Get and set the flow control: SerialPort::HARD, SerialPort::SOFT, SerialPort::NONE 
+          or SerialPort::HARD|SerialPort::SOFT.
+
+        Return the current flow control.
+
+        Note: SerialPort::HARD mode is not supported on all platforms.
+
+      * rts()
+      * rts=(0 or 1)
+      * dtr()
+      * dtr=(0 or 1)
+      * cts()
+      * dsr()
+      * dcd()
+      * ri() -> 0 or 1
+
+        Get and set the corresponding status bit.
+
+        Return the current state of the corresponding status bit.
+
+
+-- License --
+
+GPL
+
+Guillaume Pierronnet <moumar@netcourrier.com>

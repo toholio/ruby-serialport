@@ -1,0 +1,5 @@
+MANIFEST
+README
+extconf.rb
+serialport.c
+test/miniterm.rb

@@ -57,12 +57,13 @@ sp_get_fd(obj)
 }
 
 static VALUE
-sp_new(class, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
-  VALUE class, _num_port, _data_rate, _data_bits, _parity, _stop_bits;
+sp_new(class, _port, _data_rate, _data_bits, _stop_bits, _parity)
+  VALUE class, _port, _data_rate, _data_bits, _parity, _stop_bits;
 {
   OpenFile *fp;
   int fd;
   int num_port;
+  char *port;
   char *ports[] = { 
 #if defined(linux)
   "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3"
@@ -81,21 +82,26 @@ sp_new(class, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
   OBJSETUP(sp, class, T_FILE);
   MakeOpenFile(sp, fp);
   
+  switch(TYPE(_port)) {
+    case T_FIXNUM:
+      num_port = FIX2INT(_port);
+      port = ports[num_port];
+      break;
 
-  Check_Type(_num_port, T_FIXNUM);
-  Check_Type(_data_rate, T_FIXNUM);
-  Check_Type(_data_bits, T_FIXNUM);
-  Check_Type(_stop_bits, T_FIXNUM);
-  Check_Type(_parity, T_FIXNUM);
+    case T_STRING:
+      port = RSTRING(_port)->ptr;
+      break;
 
-  num_port = FIX2INT(_num_port);
+    default:
+      rb_raise(rb_eTypeError, "wrong argument type");
+      break;
+  }
   
-  fd = open(ports[num_port], O_RDWR | O_NOCTTY | O_NDELAY);
+  fd = open(port, O_RDWR | O_NOCTTY | O_NDELAY);
 
   if (fd == -1)
-    rb_sys_fail(ports[num_port]);
+    rb_sys_fail(port);
 
-  
   fp->f = rb_fdopen(fd, "r+");
   fp->mode = FMODE_READWRITE|FMODE_SYNC;
  
@@ -111,6 +117,11 @@ static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _stop_bits, _parit
   int data_rate;
 
   fd = sp_get_fd(self);
+  
+  Check_Type(_data_rate, T_FIXNUM);
+  Check_Type(_data_bits, T_FIXNUM);
+  Check_Type(_stop_bits, T_FIXNUM);
+  Check_Type(_parity, T_FIXNUM);
 
   switch(FIX2INT(_data_rate)) {
     case 50:    data_rate = B50; break;
