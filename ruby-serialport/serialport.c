@@ -91,7 +91,7 @@ static VALUE sp_create(class, _port)
   NEWOBJ(sp, struct RFile);
   rb_secure(4);
   OBJSETUP(sp, class, T_FILE);
-  MakeOpenFile(sp, fp);
+  MakeOpenFile((VALUE) sp, fp);
 
   switch(TYPE(_port)) {
     case T_FIXNUM:
@@ -588,7 +588,7 @@ static VALUE sp_create(class, _port)
   NEWOBJ(sp, struct RFile);
   rb_secure(4);
   OBJSETUP(sp, class, T_FILE);
-  MakeOpenFile(sp, fp);
+  MakeOpenFile((VALUE) sp, fp);
 
   switch(TYPE(_port)) {
     case T_FIXNUM:
