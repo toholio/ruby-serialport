@@ -15,7 +15,7 @@
  */
 
 #define _ALL_SOURCE	1
-#define VERSION 	"0.4"
+#define VERSION 	"0.5"
 
 #define NONE 		0
 #define HARD 		1
@@ -65,7 +65,7 @@ sp_new(class, _port, _data_rate, _data_bits, _stop_bits, _parity)
   int num_port;
   char *port;
   char *ports[] = { 
-#if defined(linux)
+#if defined(linux) || defined(cygwin)
   "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3",
   "/dev/ttyS4", "/dev/ttyS5", "/dev/ttyS6", "/dev/ttyS7"
 #elif defined(freebsd) || defined(netbsd) || defined(openbsd)
