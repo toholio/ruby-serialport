@@ -1,3 +1,12 @@
+ruby-serialport (0.6) unstable; urgency=low
+
+  * Windows support
+  * Get/set modem parameters
+  * Read and write timeouts
+  * Open method
+
+ -- Guillaume Pierronnet <moumar@duron.maison.chello.fr>  Thu, 13 Feb 2003 20:59:37 +0100
+
 ruby-serialport (0.5-1) unstable; urgency=low
 
   * Cygwin support 
