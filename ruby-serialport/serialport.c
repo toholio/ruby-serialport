@@ -1,4 +1,4 @@
-/* Ruby/SerialPort
+/* Ruby/SerialPort $Id$
  * Guillaume Pierronnet <moumar@netcourrier.com>
  * Alan Stern <stern@rowland.harvard.edu>
  *
