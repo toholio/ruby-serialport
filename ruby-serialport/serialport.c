@@ -39,6 +39,8 @@
 
 #ifdef CRTSCTS
 #define HAVE_FLOWCONTROL_HARD 1
+#else
+#undef HAVE_FLOWCONTROL_HARD
 #endif
 
 VALUE cSerialPort; /* serial port class */
@@ -69,18 +71,15 @@ sp_new(class, fd)
   return (VALUE)sp;
 }
 
-static void termios_setspeed(t_ios, speed)
-  struct termios *t_ios;
-  speed_t speed;
-{
-      cfsetispeed(t_ios, speed);
-      cfsetospeed(t_ios, speed);
-}
-
 static VALUE sp_init(class, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
   VALUE class, _num_port, _data_rate, _data_bits, _parity, _stop_bits;
 {
-char *ports[] = { 
+  int fd;
+  struct termios params;
+  int num_port;
+  int data_bits;
+  int data_rate;
+  char *ports[] = { 
 #if defined(linux)
   "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3"
 #elif defined(freebsd) || defined(netbsd) || defined(openbsd)
@@ -92,11 +91,13 @@ char *ports[] = {
 #elif defined(irix)
   "/dev/ttyf1", "/dev/ttyf2", "/dev/ttyf3", "/dev/ttyf4"
 #endif
-};
-  int fd;
-  int num_port;
-  int data_bits;
-  struct termios params;
+  };
+
+  Check_Type(_num_port, T_FIXNUM);
+  Check_Type(_data_rate, T_FIXNUM);
+  Check_Type(_data_bits, T_FIXNUM);
+  Check_Type(_stop_bits, T_FIXNUM);
+  Check_Type(_parity, T_FIXNUM);
 
   num_port = FIX2INT(_num_port);
   
@@ -105,64 +106,37 @@ char *ports[] = {
   if (fd == -1)
     rb_sys_fail(ports[num_port]);
 
-  /* enable blocking read */
-  fcntl(fd, F_SETFL, 0);
-
-  tcgetattr(fd, &params);
   switch(FIX2INT(_data_rate)) {
-    case 50: termios_setspeed(&params, FIX2INT(B50)); break;
-
-    case 75: termios_setspeed(&params, FIX2INT(B75)); break; 
-
-    case 110: termios_setspeed(&params, FIX2INT(B110)); break;
-
-    case 134: termios_setspeed(&params, FIX2INT(B134)); break;
-
-    case 150: termios_setspeed(&params, FIX2INT(B150)); break;
-
-    case 200: termios_setspeed(&params, FIX2INT(B200)); break;
-
-    case 300: termios_setspeed(&params, FIX2INT(B300)); break;
-
-    case 600: termios_setspeed(&params, FIX2INT(B600)); break;
-
-    case 1200: termios_setspeed(&params, FIX2INT(B1200)); break;
-
-    case 1800: termios_setspeed(&params, FIX2INT(B1800)); break;
-
-    case 2400: termios_setspeed(&params, FIX2INT(B2400)); break;
-
-    case 4800: termios_setspeed(&params, FIX2INT(B4800)); break;
-
-    case 9600: termios_setspeed(&params, FIX2INT(B9600)); break;
-
-    case 19200: termios_setspeed(&params, FIX2INT(B19200)); break;
-
-    case 38400: termios_setspeed(&params, FIX2INT(B38400)); break;
-
+    case 50:    data_rate = B50; break;
+    case 75:    data_rate = B75; break; 
+    case 110:   data_rate = B110; break;
+    case 134:   data_rate = B134; break;
+    case 150:   data_rate = B150; break;
+    case 200:   data_rate = B200; break;
+    case 300:   data_rate = B300; break;
+    case 600:   data_rate = B600; break;
+    case 1200:  data_rate = B1200; break;
+    case 1800:  data_rate = B1800; break;
+    case 2400:  data_rate = B2400; break;
+    case 4800:  data_rate = B4800; break;
+    case 9600:  data_rate = B9600; break;
+    case 19200: data_rate = B19200; break;
+    case 38400: data_rate = B38400; break;
 #ifdef B57600
-    case 57600: termios_setspeed(&params, FIX2INT(B57600)); break;
+    case 57600: data_rate = B57600; break;
 #endif
 #ifdef B76800
-    case 76800: termios_setspeed(&params, FIX2INT(B76800)); break;
+    case 76800: data_rate = B76800; break;
 #endif
 #ifdef B115200
-    case 115200: termios_setspeed(&params, FIX2INT(B115200)); break;
+    case 115200: data_rate = B115200; break;
 #endif
 
     default:
       close(fd);
-      rb_raise(rb_eArgError, "Data rate is not supported");
+      rb_raise(rb_eArgError, "unknown baud rate");
       break;
   }
-  /*
-   * Enable the receiver and set localmode
-   */
-  params.c_cflag |= (CLOCAL | CREAD);
-
-  /*
-   * Set up character size
-   */
 
   switch(FIX2INT(_data_bits)) {
     case 5:
@@ -179,16 +153,10 @@ char *ports[] = {
       break;
     default:
       close(fd);
-      rb_raise(rb_eArgError, "Bad character size");
+      rb_raise(rb_eArgError, "unknown character size");
       break;
   }
-  params.c_cflag &= ~CSIZE;
-  params.c_cflag |= data_bits;
- 
-
-  /*
-   * Set up parity
-   */
+  params.c_cflag = data_bits | CLOCAL | CREAD;
 
   switch(FIX2INT(_parity)) {
     case EVEN:
@@ -207,7 +175,7 @@ char *ports[] = {
 
     default:
       close(fd);
-      rb_raise(rb_eArgError, "Bad parity");
+      rb_raise(rb_eArgError, "unknown parity");
       break;
       
   }
@@ -223,17 +191,28 @@ char *ports[] = {
       break;
     default:
       close(fd);
-      rb_raise(rb_eArgError, "Bad number of stop bits");
+      rb_raise(rb_eArgError, "unknown number of stop bits");
     break;
   }
-  /*
-   * Set up input type
-   */
 
-  /* raw */
-  params.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
- 
+  params.c_oflag = 0;
+  params.c_lflag = 0; 
+  cfsetispeed(&params, data_rate);
+  cfsetospeed(&params, data_rate);
+  tcsetattr(fd, TCSAFLUSH, &params);
+
+  /* enable blocking read */
+  fcntl(fd, F_SETFL, 0);
+  /*fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);*/
+#if 0
   tcsetattr(fd, TCSANOW, &params);
+  params.c_cflag = CS8 | CLOCAL | CREAD;
+  params.c_oflag = 0;
+  params.c_lflag = 0;
+  cfsetspeed(&params, data_rate);
+  tcsetattr(fd, TCSAFLUSH, &params);
+  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);
+#endif
 
   return sp_new(class, fd); 
 }
@@ -243,6 +222,8 @@ static VALUE sp_set_flow_control(self, val)
   int fd;
   int flowc;
   struct termios params;
+
+  Check_Type(val, T_FIXNUM);
 
   fd = sp_get_fd(self);
   tcgetattr(fd, &params);
@@ -294,6 +275,8 @@ static VALUE sp_break(self, time)
 {
   int fd;
  
+  Check_Type(time, T_FIXNUM);
+
   fd = sp_get_fd(self);
   tcsendbreak(fd, FIX2INT(time));
   return Qnil;
@@ -317,6 +300,7 @@ static VALUE set_signal(obj, val, sig)
   int fd;
   int set;
 
+  Check_Type(val, T_FIXNUM);
   fd = sp_get_fd(obj);
   ioctl(fd, TIOCMGET, &status);
   set = FIX2INT(val);
