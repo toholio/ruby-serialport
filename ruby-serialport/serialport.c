@@ -15,7 +15,7 @@
  * http://www.easysw.com/~mike/serial/
  */
 
-#define VERSION 	"0.6"
+#define VERSION 	"0.6.1"
 
 #include <ruby.h>    /* ruby inclusion */
 #include <rubyio.h>  /* ruby io inclusion */
@@ -42,7 +42,7 @@ static VALUE sBaud, sDataBits, sStopBits, sParity; /* strings */
 static VALUE sRts, sDtr, sCts, sDsr, sDcd, sRi;
 
 
-#if defined(mswin) || defined(bccwin)
+#if defined(OS_MSWIN) || defined(OS_BCCWIN)
 
 
 #include <stdio.h>   /* Standard input/output definitions */
@@ -260,7 +260,7 @@ SkipParity:
 
   if (SetCommState(fh, &dcb) == 0)
     rb_sys_fail(sSetCommState);
-  return self;
+  return argv[0];
 }
 
 static void get_modem_params(self, mp)
@@ -310,7 +310,7 @@ static VALUE sp_set_flow_control(self, val)
 
   if (SetCommState(fh, &dcb) == 0)
     rb_sys_fail(sSetCommState);
-  return self;
+  return val;
 }
 
 static VALUE sp_get_flow_control(self)
@@ -364,7 +364,7 @@ static VALUE sp_set_read_timeout(self, val)
 
   if (SetCommTimeouts(fh, &ctout) == 0)
     rb_sys_fail(sSetCommTimeouts);
-  return self;
+  return val;
 }
 
 static VALUE sp_get_read_timeout(self)
@@ -409,7 +409,7 @@ static VALUE sp_set_write_timeout(self, val)
 
   if (SetCommTimeouts(fh, &ctout) == 0)
     rb_sys_fail(sSetCommTimeouts);
-  return self;
+  return val;
 }
 
 static VALUE sp_get_write_timeout(self)
@@ -489,7 +489,7 @@ static VALUE set_signal(obj, val, sigoff, sigon)
 
   if (EscapeCommFunction(fh, sig) == 0)
     rb_sys_fail("EscapeCommFunction");
-  return obj;
+  return val;
 }
 
 static VALUE sp_set_rts(self, val)
@@ -519,7 +519,7 @@ static VALUE sp_get_dtr(self)
 }
 
 
-#else /* defined(mswin) || defined(bccwin) */
+#else /* defined(OS_MSWIN) || defined(OS_BCCWIN) */
 
 
 #include <stdio.h>   /* Standard input/output definitions */
@@ -566,19 +566,19 @@ static VALUE sp_create(class, _port)
   int num_port;
   char *port;
   char *ports[] = {
-#if defined(linux) || defined(cygwin)
+#if defined(OS_LINUX) || defined(OS_CYGWIN)
   "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3",
   "/dev/ttyS4", "/dev/ttyS5", "/dev/ttyS6", "/dev/ttyS7"
-#elif defined(freebsd) || defined(netbsd) || defined(openbsd)
+#elif defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_OPENBSD)
   "/dev/cuaa0", "/dev/cuaa1", "/dev/cuaa2", "/dev/cuaa3",
   "/dev/cuaa4", "/dev/cuaa5", "/dev/cuaa6", "/dev/cuaa7"
-#elif defined(solaris)
+#elif defined(OS_SOLARIS)
   "/dev/ttya", "/dev/ttyb", "/dev/ttyc", "/dev/ttyd",
   "/dev/ttye", "/dev/ttyf", "/dev/ttyg", "/dev/ttyh"
-#elif defined(aix)
+#elif defined(OS_AIX)
   "/dev/tty0", "/dev/tty1", "/dev/tty2", "/dev/tty3",
   "/dev/tty4", "/dev/tty5", "/dev/tty6", "/dev/tty7"
-#elif defined(irix)
+#elif defined(OS_IRIX)
   "/dev/ttyf1", "/dev/ttyf2", "/dev/ttyf3", "/dev/ttyf4",
   "/dev/ttyf5", "/dev/ttyf6", "/dev/ttyf7", "/dev/ttyf8"
 #endif
@@ -781,7 +781,7 @@ SkipParity:
 
   if (tcsetattr(fd, TCSANOW, &params) == -1)
     rb_sys_fail(sTcsetattr);
-  return self;
+  return argv[0];
 }
 
 static void get_modem_params(self, mp)
@@ -882,7 +882,7 @@ static VALUE sp_set_flow_control(self, val)
 
   if (tcsetattr(fd, TCSANOW, &params) == -1)
     rb_sys_fail(sTcsetattr);
-  return self;
+  return val;
 }
 
 static VALUE sp_get_flow_control(self)
@@ -934,7 +934,7 @@ static VALUE sp_set_read_timeout(self, val)
 
   if (tcsetattr(fd, TCSANOW, &params) == -1)
     rb_sys_fail(sTcsetattr);
-  return self;
+  return val;
 }
 
 static VALUE sp_get_read_timeout(self)
@@ -1019,13 +1019,13 @@ static VALUE set_signal(obj, val, sig)
 
   if (ioctl(fd, TIOCMSET, &status) == -1)
     rb_sys_fail(sIoctl);
-  return obj;
+  return val;
 }
 
 static VALUE sp_set_rts(self, val)
   VALUE self, val;
 {
-    return set_signal(self, val, TIOCM_RTS);
+  return set_signal(self, val, TIOCM_RTS);
 }
 
 static VALUE sp_set_dtr(self, val)
@@ -1053,7 +1053,7 @@ static VALUE sp_get_dtr(self)
 }
 
 
-#endif /* defined(mswin) || defined(bccwin) */
+#endif /* defined(OS_MSWIN) || defined(OS_BCCWIN) */
 
 
 static VALUE sp_set_data_rate(self, data_rate)
@@ -1063,7 +1063,8 @@ static VALUE sp_set_data_rate(self, data_rate)
 
   argv[0] = data_rate;
   argv[1] = argv[2] = argv[3] = Qnil;
-  return sp_set_modem_params(4, argv, self);
+  sp_set_modem_params(4, argv, self);
+  return data_rate;
 }
 
 static VALUE sp_set_data_bits(self, data_bits)
@@ -1073,7 +1074,8 @@ static VALUE sp_set_data_bits(self, data_bits)
 
   argv[1] = data_bits;
   argv[0] = argv[2] = argv[3] = Qnil;
-  return sp_set_modem_params(4, argv, self);
+  sp_set_modem_params(4, argv, self);
+  return data_bits;
 }
 
 static VALUE sp_set_stop_bits(self, stop_bits)
@@ -1083,7 +1085,8 @@ static VALUE sp_set_stop_bits(self, stop_bits)
 
   argv[2] = stop_bits;
   argv[0] = argv[1] = argv[3] = Qnil;
-  return sp_set_modem_params(4, argv, self);
+  sp_set_modem_params(4, argv, self);
+  return stop_bits;
 }
 
 static VALUE sp_set_parity(self, parity)
@@ -1093,7 +1096,8 @@ static VALUE sp_set_parity(self, parity)
 
   argv[3] = parity;
   argv[0] = argv[1] = argv[2] = Qnil;
-  return sp_set_modem_params(4, argv, self);
+  sp_set_modem_params(4, argv, self);
+  return parity;
 }
 
 static VALUE sp_get_data_rate(self)
@@ -1192,7 +1196,7 @@ sp_signals(self)
 
   get_line_signals(self, &ls);
   hash = rb_hash_new();
-#if !(defined(mswin) || defined(bccwin))
+#if !(defined(OS_MSWIN) || defined(OS_BCCWIN))
   rb_hash_aset(hash, sRts, INT2FIX(ls.rts));
   rb_hash_aset(hash, sDtr, INT2FIX(ls.dtr));
 #endif
@@ -1296,9 +1300,9 @@ void Init_serialport() {
 	    "begin\n"
 	      "sp.set_modem_params(*params)\n"
 	      "if (block_given?)\n"
-		"yield sp\n"
+		"rc = yield sp\n"
 		"sp.close\n"
-		"return nil\n"
+		"return rc\n"
 	      "end\n"
 	    "rescue\n"
 	      "sp.close\n"
