@@ -21,14 +21,16 @@
 #include <fcntl.h>   /* File control definitions */
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
+#include <sys/ioctl.h>
 
 #include <ruby.h>    /* ruby inclusion */
 
 #define VERSION "0.1"
 
-#if 0
-#define CHECK_OPENED(sp) if(sp->fd == -1) rb_raise(eSerialPort, "Serial port is not opened.")
-#endif
+#define FLOWCONTROL_NONE 	0x0
+#define FLOWCONTROL_HARD 	0x1
+#define FLOWCONTROL_SOFT 	0x2
+
 #if defined(linux)
 #define CNEW_RTSCTS CRTSCTS
 #endif
@@ -71,7 +73,7 @@ static SP *get_sp(obj)
 static void close_sp(sp)
   SP *sp;
 {
-  tcsetattr(sp->fd, TCSADRAIN, sp->old_params);
+  tcsetattr(sp->fd, TCSANOW, sp->old_params);
   close(sp->fd);
   sp->fd = -1;
 }
@@ -95,8 +97,8 @@ static void termios_setspeed(t_ios, speed)
       cfsetospeed(t_ios, speed);
 }
 
-static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _parity, _stop_bits, _flow_control, _timeout)
-  VALUE self, _num_port, _data_rate, _data_bits, _parity, _stop_bits, _flow_control;
+static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
+  VALUE self, _num_port, _data_rate, _data_bits, _parity, _stop_bits;
 {
   SP *sp;
 #if defined(linux)
@@ -173,7 +175,7 @@ static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _parity, _stop_bit
    */
 
   if (!strcmp(STR2CSTR(_parity), "none") ||
-    !strcnmp(STR2CSTR(_parity), "space")) {
+    !strcmp(STR2CSTR(_parity), "space")) {
       sp->params->c_cflag &= ~PARENB;
       sp->params->c_cflag &= ~CSTOPB;
   }
@@ -207,15 +209,6 @@ static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _parity, _stop_bit
   sp->params->c_cflag |= data_bits;
 
   /*
-   * Set up flow control
-   */
-  /* disable hardware flow control */
-  sp->params->c_cflag &= ~CNEW_RTSCTS;
-  
-  if ( FIX2INT(_flow_control) == 1) ;
-    sp->params->c_cflag |= CNEW_RTSCTS;
-
-  /*
    * Set up input type
    */
 
@@ -225,9 +218,6 @@ static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _parity, _stop_bit
   /* canonical (line-oriented) */
   
   /* sp->params->c_lflag |= (ICANON | ECHO | ECHOE); */
-
-  sp->params->c_cc[VMIN]  = 0;
-  sp->params->c_cc[VTIME] = FIX2INT(_timeout);
 
   tcsetattr(sp->fd, TCSANOW, sp->params);
   return Data_Wrap_Struct(self, 0, free_sp, sp);
@@ -301,13 +291,183 @@ static VALUE sp_write(self, str)
   return INT2FIX(ret);
 }
 
+static VALUE sp_set_flow_control(self, val)
+  VALUE self, val;
+{
+  int fc;
+  SP *sp;
+
+  sp = get_sp(self);
+  
+  fc = FIX2INT(val);
+  if ( fc == FLOWCONTROL_NONE ) {
+    sp->params->c_cflag &= ~CNEW_RTSCTS;
+    sp->params->c_iflag &= ~(IXON | IXOFF | IXANY);
+  }
+  else {
+    if ( fc & FLOWCONTROL_HARD )
+      sp->params->c_cflag |= CNEW_RTSCTS;
+    if ( fc & FLOWCONTROL_SOFT )
+      sp->params->c_iflag |= (IXON | IXOFF | IXANY);
+  }   
+
+  tcsetattr(sp->fd, TCSANOW, sp->params);
+  return val;
+}
+static VALUE sp_get_flow_control(self)
+  VALUE self;
+{
+  int ret;
+  SP *sp;
+  
+  sp = get_sp(self);
+  ret = 0;
+  if ( sp->params->c_cflag & CNEW_RTSCTS)
+    ret += FLOWCONTROL_HARD;
+  if ( sp->params->c_iflag & (IXON | IXOFF | IXANY))
+    ret += FLOWCONTROL_SOFT;
+ 
+  return INT2FIX(ret);
+}
+/* timeout */
+static VALUE sp_set_timeout(self, val)
+  VALUE self, val;
+{
+  SP *sp;
+
+  sp = get_sp(self);
+  
+  sp->params->c_cc[VMIN]  = 0;
+  sp->params->c_cc[VTIME] = FIX2INT(val);
+  
+  tcsetattr(sp->fd, TCSANOW, sp->params);
+
+  return val;
+ 
+}
+static VALUE sp_get_timeout(self) 
+  VALUE self;
+{
+  SP *sp;
+  int ret;
+  
+  sp = get_sp(self);
+  ret = sp->params->c_cc[VTIME];
+
+  return INT2FIX(ret);
+}
+/* break */
+static VALUE sp_break(self, time)
+  VALUE self, time;
+{
+  SP *sp;
+
+  sp = get_sp(self);
+  tcsendbreak(sp->fd, FIX2INT(time));
+  return Qnil;
+}
+
+static VALUE set_signal(obj, val, sig)
+  VALUE obj,val;
+  int sig;
+{
+  SP *sp;
+  int status;
+
+  sp = get_sp(obj);
+  ioctl(sp->fd, TIOCMGET, &status);
+  if (TYPE(val) == T_FALSE)
+    status &= ~sig;
+  else 
+    status |= sig;
+  ioctl(sp->fd, TIOCMSET, &status);
+  return val;
+}
+
+static int get_signal(obj, sig)
+  VALUE obj;
+  int sig;
+{
+  SP *sp;
+  int status;
+
+  sp = get_sp(obj);
+  ioctl(sp->fd, TIOCMGET, &status);
+  return sig & status;
+}
+/* RTS */
+static VALUE sp_set_rts(self, val)
+  VALUE self, val;
+{
+    return set_signal(self, val, TIOCM_RTS);
+}
+
+static VALUE sp_get_rts(self)
+  VALUE self;
+{
+  return ( get_signal(self, TIOCM_RTS) == 0 ? Qfalse : Qtrue);
+}
+
+/* DTR */
+static VALUE sp_set_dtr(self, val)
+  VALUE self, val;
+{
+  return set_signal(self, val, TIOCM_DTR);
+}
+
+static VALUE sp_get_dtr(self)
+  VALUE self;
+{
+  return ( get_signal(self, TIOCM_DTR) == 0 ? Qfalse : Qtrue);
+}
+/* CTS */
+static VALUE sp_get_cts(self)
+  VALUE self;
+{
+  return ( get_signal(self, TIOCM_CTS) == 0 ? Qfalse : Qtrue);
+}
+/* DSR */
+static VALUE sp_get_dsr(self)
+  VALUE self;
+{
+  return ( get_signal(self, TIOCM_DSR) == 0 ? Qfalse : Qtrue);
+}
+/* DCD */
+static VALUE sp_get_dcd(self)
+  VALUE self;
+{
+  return ( get_signal(self, TIOCM_CD) == 0 ? Qfalse : Qtrue);
+}
+/* RI */
+static VALUE sp_get_ri(self)
+  VALUE self;
+{
+  return ( get_signal(self, TIOCM_RI) == 0 ? Qfalse : Qtrue);
+}
 void Init_serialport() {
   
   eSerialPort = rb_define_class("SerialPortError", rb_eStandardError);
   eSerialPortTimeout = rb_define_class("SerialPortTimeout", eSerialPort);
   cSerialPort = rb_define_class("SerialPort", rb_cObject);
-  rb_define_singleton_method(cSerialPort, "new", sp_init, 7);
+  rb_define_singleton_method(cSerialPort, "new", sp_init, 5);
   rb_define_method(cSerialPort, "close", sp_close, 0);
   rb_define_method(cSerialPort, "read", sp_read, 0);
   rb_define_method(cSerialPort, "write", sp_write, 1);
+  rb_define_method(cSerialPort, "flow_control=", sp_set_flow_control, 1);
+  rb_define_method(cSerialPort, "flow_control", sp_get_flow_control, 0);
+  rb_define_method(cSerialPort, "timeout=", sp_set_timeout, 1);
+  rb_define_method(cSerialPort, "timeout", sp_get_timeout, 0);
+  rb_define_method(cSerialPort, "break", sp_break, 1);
+  rb_define_method(cSerialPort, "rts?", sp_get_rts, 0);
+  rb_define_method(cSerialPort, "rts=", sp_set_rts, 1);
+  rb_define_method(cSerialPort, "dtr?", sp_get_dtr, 0);
+  rb_define_method(cSerialPort, "dtr=", sp_set_dtr, 1);
+  rb_define_method(cSerialPort, "cts?", sp_get_cts, 0);
+  rb_define_method(cSerialPort, "dsr?", sp_get_dsr, 0);
+  rb_define_method(cSerialPort, "dcd?", sp_get_dcd, 0);
+  rb_define_method(cSerialPort, "ri?", sp_get_ri, 0);
+  
+  rb_define_const(cSerialPort, "FLOWCONTROL_NONE", INT2FIX(FLOWCONTROL_NONE));
+  rb_define_const(cSerialPort, "FLOWCONTROL_HARD", INT2FIX(FLOWCONTROL_HARD));
+  rb_define_const(cSerialPort, "FLOWCONTROL_SOFT", INT2FIX(FLOWCONTROL_SOFT));
 }
