@@ -8,10 +8,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Lot of documentation used in the development ( perhaps all :) comes from the 
+ * For documentation on serial programming, see the excellent:
  * "Serial Programming Guide for POSIX Operating Systems"
- * written Michael R. Sweet. Special thans to him :)
- * get it at: http://www.easysw.com/~mike/serial/
+ * written Michael R. Sweet.
+ * http://www.easysw.com/~mike/serial/
  */
 
 
@@ -26,6 +26,9 @@
 
 #define VERSION "0.1"
 
+#if 0
+#define CHECK_OPENED(sp) if(sp->fd == -1) rb_raise(eSerialPort, "Serial port is not opened.")
+#endif
 #if defined(linux)
 #define CNEW_RTSCTS CRTSCTS
 #endif
@@ -53,35 +56,55 @@ typedef struct _SP {
 
 VALUE cSerialPort; /* serial port class */
 VALUE eSerialPort; /* serial port error class */ 
+VALUE eSerialPortTimeout; /* serial port timeout error class */ 
 
 static SP *get_sp(obj)
   VALUE obj;
 {
   SP *sp;
   Data_Get_Struct(obj, SP, sp);
+  if (sp->fd == -1)
+    rb_raise(eSerialPort, "Serial port is not opened.");
   return sp;
+}
+
+static void close_sp(sp)
+  SP *sp;
+{
+  tcsetattr(sp->fd, TCSADRAIN, sp->old_params);
+  close(sp->fd);
+  sp->fd = -1;
 }
 
 static void free_sp(sp)
   SP *sp;
 {
+  if(sp->fd != -1)
+    close_sp(sp);    
   free(sp->params);
-
-  /* restore old values */
-  tcsetattr(sp->fd, TCSADRAIN, sp->old_params);
   free(sp->old_params);
   free(sp);
   return;
 }
 
-static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _parity, _stop_bits, _flow_control)
+static void termios_setspeed(t_ios, speed)
+  struct termios *t_ios;
+  speed_t speed;
+{
+      cfsetispeed(t_ios, speed);
+      cfsetospeed(t_ios, speed);
+}
+
+static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _parity, _stop_bits, _flow_control, _timeout)
   VALUE self, _num_port, _data_rate, _data_bits, _parity, _stop_bits, _flow_control;
 {
   SP *sp;
+#if defined(linux)
   char *ports[] = { "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3" };
+#endif
   int num_port;
   int data_bits = CS8;
-
+ 
 
   num_port = FIX2INT(_num_port);
   sp = (SP*)malloc(sizeof(SP));
@@ -98,10 +121,48 @@ static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _parity, _stop_bit
 		  
   sp->params = (struct termios*)malloc(sizeof(struct termios));
   tcgetattr(sp->fd, sp->params);
+  switch(FIX2INT(_data_rate)) {
+    case 50: termios_setspeed(sp->params, FIX2INT(B50)); break;
 
-  cfsetispeed(sp->params, FIX2INT(_data_rate));
-  cfsetospeed(sp->params, FIX2INT(_data_rate));
+    case 75: termios_setspeed(sp->params, FIX2INT(B75)); break; 
 
+    case 110: termios_setspeed(sp->params, FIX2INT(B110)); break;
+
+    case 134: termios_setspeed(sp->params, FIX2INT(B134)); break;
+
+    case 150: termios_setspeed(sp->params, FIX2INT(B150)); break;
+
+    case 200: termios_setspeed(sp->params, FIX2INT(B200)); break;
+
+    case 300: termios_setspeed(sp->params, FIX2INT(B300)); break;
+
+    case 600: termios_setspeed(sp->params, FIX2INT(B600)); break;
+
+    case 1200: termios_setspeed(sp->params, FIX2INT(B1200)); break;
+
+    case 1800: termios_setspeed(sp->params, FIX2INT(B1800)); break;
+
+    case 2400: termios_setspeed(sp->params, FIX2INT(B2400)); break;
+
+    case 4800: termios_setspeed(sp->params, FIX2INT(B4800)); break;
+
+    case 9600: termios_setspeed(sp->params, FIX2INT(B9600)); break;
+
+    case 19200: termios_setspeed(sp->params, FIX2INT(B19200)); break;
+
+    case 38400: termios_setspeed(sp->params, FIX2INT(B38400)); break;
+
+    case 57600: termios_setspeed(sp->params, FIX2INT(B57600)); break;
+
+/*    case 76800: termios_setspeed(sp->params, FIX2INT(B76800)); break;
+ */
+    case 115200: termios_setspeed(sp->params, FIX2INT(B115200)); break;
+
+    default:
+      close_sp(sp);
+      rb_raise(rb_eArgError, "Data rate is not supported.");
+      break;
+  }
   /*
    * Enable the receiver and set localmode
    */
@@ -111,24 +172,20 @@ static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _parity, _stop_bit
    * Set up parity
    */
 
-  switch(FIX2INT(_parity)) {
-    case 0: /* NONE */
-    case 1: /* SPACE */
+  if (!strcmp(STR2CSTR(_parity), "none") ||
+    !strcnmp(STR2CSTR(_parity), "space")) {
       sp->params->c_cflag &= ~PARENB;
       sp->params->c_cflag &= ~CSTOPB;
-      break;
-    
-    case 2: /* EVEN */
+  }
+  else if (!strcmp(STR2CSTR(_parity), "even")) {
       sp->params->c_cflag |= PARENB;
       sp->params->c_cflag &= ~PARODD;
       sp->params->c_cflag &= ~CSTOPB;
-      break;
-
-    case 3: /* ODD */
+  }
+  else if (!strcmp(STR2CSTR(_parity), "odd")) {
       sp->params->c_cflag |= PARENB;
       sp->params->c_cflag |= PARODD;
       sp->params->c_cflag &= ~CSTOPB;
-      break;
   } 
 
   /*
@@ -158,6 +215,20 @@ static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _parity, _stop_bit
   if ( FIX2INT(_flow_control) == 1) ;
     sp->params->c_cflag |= CNEW_RTSCTS;
 
+  /*
+   * Set up input type
+   */
+
+  /* raw */
+  sp->params->c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+ 
+  /* canonical (line-oriented) */
+  
+  /* sp->params->c_lflag |= (ICANON | ECHO | ECHOE); */
+
+  sp->params->c_cc[VMIN]  = 0;
+  sp->params->c_cc[VTIME] = FIX2INT(_timeout);
+
   tcsetattr(sp->fd, TCSANOW, sp->params);
   return Data_Wrap_Struct(self, 0, free_sp, sp);
 }
@@ -168,39 +239,75 @@ static VALUE sp_close(self)
   SP *sp;
 
   sp = get_sp(self);
-  close(sp->fd);
-  
+  close_sp(sp);
   return Qnil;
+}
+
+static VALUE sp_read(self)
+  VALUE self;
+{
+  SP *sp;
+  char str[255];
+  int ret;  
+
+
+  sp = get_sp(self);
+  ret = read(sp->fd, &str, 255);
+  if ( ret < 0 )
+    rb_raise(eSerialPort, "Failed to read.");
+  else if (ret == 0)
+    rb_raise(eSerialPortTimeout, "Timeout elapsed.");
+ 
+  return rb_str_new(str, ret);
+
+/*  char buf;  
+  char *str;
+  int ret;
+  int size = 0;
+  VALUE final_str;
+#define STR_SIZE 255
+
+  sp = get_sp(self);
+  str = (char*)malloc(STR_SIZE);
+retry:
+  ret = read(sp->fd, &buf, 1);
+  if(ret == 1) {
+    *str++ = buf;
+    size++;
+    if (size < STR_SIZE)
+      goto retry;
+  }
+  
+  final_str = rb_str_new(str, size);
+  free(str);
+  return(final_str);
+*/
+}
+
+static VALUE sp_write(self, str)
+  VALUE self, str;
+{
+  SP *sp;
+  char *src;
+  long size_src;
+  int ret;
+
+  sp = get_sp(self);
+  src = RSTRING(str)->ptr;
+  size_src = RSTRING(str)->len;
+  ret = write(sp->fd, src, size_src);  
+  if (ret < 0)
+    rb_raise(eSerialPort, "Error writing port.");
+  return INT2FIX(ret);
 }
 
 void Init_serialport() {
   
-  eSerialPort = rb_define_class("SerialPortError", rb_eStandardError); 
+  eSerialPort = rb_define_class("SerialPortError", rb_eStandardError);
+  eSerialPortTimeout = rb_define_class("SerialPortTimeout", eSerialPort);
   cSerialPort = rb_define_class("SerialPort", rb_cObject);
-  rb_define_method(cSerialPort, "new", sp_init, 6);
+  rb_define_singleton_method(cSerialPort, "new", sp_init, 7);
   rb_define_method(cSerialPort, "close", sp_close, 0);
-  rb_define_const(cSerialPort, "B50", INT2FIX(B50));
-  rb_define_const(cSerialPort, "B75", INT2FIX(B75));
-  rb_define_const(cSerialPort, "B110", INT2FIX(B110));
-  rb_define_const(cSerialPort, "B134", INT2FIX(B134));
-  rb_define_const(cSerialPort, "B150", INT2FIX(B150));
-  rb_define_const(cSerialPort, "B200", INT2FIX(B200));
-  rb_define_const(cSerialPort, "B300", INT2FIX(B300));
-  rb_define_const(cSerialPort, "B600", INT2FIX(B600));
-  rb_define_const(cSerialPort, "B1200", INT2FIX(B1200));
-  rb_define_const(cSerialPort, "B1800", INT2FIX(B1800));
-  rb_define_const(cSerialPort, "B2400", INT2FIX(B2400));
-  rb_define_const(cSerialPort, "B4800", INT2FIX(B4800));
-  rb_define_const(cSerialPort, "B9600", INT2FIX(B9600));
-  rb_define_const(cSerialPort, "B19200", INT2FIX(B19200));
-  rb_define_const(cSerialPort, "B38400", INT2FIX(B38400));
-  rb_define_const(cSerialPort, "B57600", INT2FIX(B57600));
-  /*rb_define_const(cSerialPort, "B76800", INT2FIX(B76800));*/
-  rb_define_const(cSerialPort, "B115200", INT2FIX(B115200));
-
-  rb_define_const(cSerialPort, "NONE", INT2FIX(0));
-  rb_define_const(cSerialPort, "SPACE", INT2FIX(1));
-  rb_define_const(cSerialPort, "EVEN", INT2FIX(2));
-  rb_define_const(cSerialPort, "ODD", INT2FIX(3));
-
+  rb_define_method(cSerialPort, "read", sp_read, 0);
+  rb_define_method(cSerialPort, "write", sp_write, 1);
 }
