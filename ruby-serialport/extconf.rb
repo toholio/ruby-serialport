@@ -1,10 +1,13 @@
 require 'mkmf'
 
-exit(1) if not have_header("termios.h") or not have_header("unistd.h")
 printf("checking for OS... ")
 STDOUT.flush
-os = /-([a-z]+)[0-9]*.*/.match(RUBY_PLATFORM)[1]
+os = /-([a-z]+)/.match(RUBY_PLATFORM)[1]
 puts(os)
 $CFLAGS += " -D#{os}"
+
+if !(os == 'mswin' or os == 'bccwin')
+  exit(1) if not have_header("termios.h") or not have_header("unistd.h")
+end
 
 create_makefile("serialport")
