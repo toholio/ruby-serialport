@@ -77,11 +77,20 @@ sp_new(class, _port, _data_rate, _data_bits, _stop_bits, _parity)
   "/dev/ttyf1", "/dev/ttyf2", "/dev/ttyf3", "/dev/ttyf4"
 #endif
   };
+  struct termios params;
+  int data_bits;
+  int data_rate;
   
   NEWOBJ(sp, struct RFile);
+  
+  Check_Type(_data_rate, T_FIXNUM);
+  Check_Type(_data_bits, T_FIXNUM);
+  Check_Type(_stop_bits, T_FIXNUM);
+  Check_Type(_parity, T_FIXNUM);
+
   OBJSETUP(sp, class, T_FILE);
   MakeOpenFile(sp, fp);
-  
+
   switch(TYPE(_port)) {
     case T_FIXNUM:
       num_port = FIX2INT(_port);
@@ -105,24 +114,6 @@ sp_new(class, _port, _data_rate, _data_bits, _stop_bits, _parity)
   fp->f = rb_fdopen(fd, "r+");
   fp->mode = FMODE_READWRITE|FMODE_SYNC;
  
-  return (VALUE)sp;
-}
-
-static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
-  VALUE self, _num_port, _data_rate, _data_bits, _parity, _stop_bits;
-{
-  int fd;
-  struct termios params;
-  int data_bits;
-  int data_rate;
-
-  fd = sp_get_fd(self);
-  
-  Check_Type(_data_rate, T_FIXNUM);
-  Check_Type(_data_bits, T_FIXNUM);
-  Check_Type(_stop_bits, T_FIXNUM);
-  Check_Type(_parity, T_FIXNUM);
-
   switch(FIX2INT(_data_rate)) {
     case 50:    data_rate = B50; break;
     case 75:    data_rate = B75; break; 
@@ -237,9 +228,10 @@ static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _stop_bits, _parit
   tcsetattr(fd, TCSAFLUSH, &params);
   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);
 #endif
-  /* return self; */
-  return Qnil;
+
+  return (VALUE)sp;
 }
+
 static VALUE sp_set_flow_control(self, val)
   VALUE self, val;
 {
@@ -420,7 +412,6 @@ void Init_serialport() {
   
   cSerialPort = rb_define_class("SerialPort", rb_cIO);
   rb_define_singleton_method(cSerialPort, "new", sp_new, 5);
-  rb_define_method(cSerialPort, "initialize", sp_init, 5);
 
   rb_define_method(cSerialPort, "flow_control=", sp_set_flow_control, 1);
   rb_define_method(cSerialPort, "flow_control", sp_get_flow_control, 0);

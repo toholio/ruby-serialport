@@ -2,6 +2,8 @@
 
 -- Changelog --
  
+0.2 => 14/03/2002:      A bug fixed (read() was not blocking)
+
 0.1 => 14/03/2002:      First release
 
 
