@@ -381,7 +381,22 @@ static VALUE sp_get_ri(self)
 }
 
 static VALUE
-sp_get_dispo(self)
+sp_signals(self)
+  VALUE self;
+{
+  VALUE hash;
+
+  hash = rb_hash_new();
+  rb_hash_aset(hash, rb_str_new2("rts"), sp_get_rts(self));
+  rb_hash_aset(hash, rb_str_new2("dtr"), sp_get_dtr(self));
+  rb_hash_aset(hash, rb_str_new2("cts"), sp_get_cts(self));
+  rb_hash_aset(hash, rb_str_new2("dsr"), sp_get_dsr(self));
+  rb_hash_aset(hash, rb_str_new2("dcd"), sp_get_dcd(self));
+  rb_hash_aset(hash, rb_str_new2("ri"), sp_get_ri(self));
+  return hash;
+}
+static VALUE
+sp_dispo(self)
   VALUE self;
 {
   int fd, ret;
@@ -399,10 +414,11 @@ void Init_serialport() {
   rb_define_method(cSerialPort, "flow_control=", sp_set_flow_control, 1);
   rb_define_method(cSerialPort, "flow_control", sp_get_flow_control, 0);
 
-  rb_define_method(cSerialPort, "dispo", sp_get_dispo, 0);
+  rb_define_method(cSerialPort, "dispo", sp_dispo, 0);
 
   rb_define_method(cSerialPort, "break", sp_break, 1);
-  
+ 
+  rb_define_method(cSerialPort, "signals", sp_signals, 0);
   rb_define_method(cSerialPort, "rts", sp_get_rts, 0);
   rb_define_method(cSerialPort, "rts=", sp_set_rts, 1);
   rb_define_method(cSerialPort, "dtr", sp_get_dtr, 0);
