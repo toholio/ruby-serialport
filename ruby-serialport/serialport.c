@@ -2,7 +2,7 @@
  * Guillaume Pierronnet <moumar@netcourrier.com>
  *
  * This code is hereby licensed for public consumption under either the
- * GNU GPL v2 or greater, or Larry Wall's Artistic license - your choice.
+ * GNU GPL v2 or greater
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
@@ -15,7 +15,7 @@
  */
 
 #define _ALL_SOURCE	1
-#define VERSION 	"0.1"
+#define VERSION 	"0.4"
 
 #define NONE 		0
 #define HARD 		1
@@ -66,15 +66,20 @@ sp_new(class, _port, _data_rate, _data_bits, _stop_bits, _parity)
   char *port;
   char *ports[] = { 
 #if defined(linux)
-  "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3"
+  "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3",
+  "/dev/ttyS4", "/dev/ttyS5", "/dev/ttyS6", "/dev/ttyS7"
 #elif defined(freebsd) || defined(netbsd) || defined(openbsd)
   "/dev/cuaa0", "/dev/cuaa1", "/dev/cuaa2", "/dev/cuaa3", 
+  "/dev/cuaa4", "/dev/cuaa5", "/dev/cuaa6", "/dev/cuaa7"
 #elif defined(solaris)
-  "/dev/ttya", "/dev/ttyb", "/dev/ttyc", "/dev/ttyd"
+  "/dev/ttya", "/dev/ttyb", "/dev/ttyc", "/dev/ttyd",
+  "/dev/ttye", "/dev/ttyf", "/dev/ttyg", "/dev/ttyh"
 #elif defined(aix)
-  "/dev/tty0", "/dev/tty1", "/dev/tty2", "/dev/tty3"
+  "/dev/tty0", "/dev/tty1", "/dev/tty2", "/dev/tty3",
+  "/dev/tty4", "/dev/tty5", "/dev/tty6", "/dev/tty7"
 #elif defined(irix)
-  "/dev/ttyf1", "/dev/ttyf2", "/dev/ttyf3", "/dev/ttyf4"
+  "/dev/ttyf1", "/dev/ttyf2", "/dev/ttyf3", "/dev/ttyf4",
+  "/dev/ttyf5", "/dev/ttyf6", "/dev/ttyf7", "/dev/ttyf8"
 #endif
   };
   struct termios params;

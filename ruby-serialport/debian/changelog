@@ -1,3 +1,9 @@
+ruby-serialport (0.4-1) unstable; urgency=low
+
+  * Modified to support 8 serial ports 
+
+ -- Guillaume Pierronnet <moumar@duron.maison.chello.fr>  Fri, 20 Sep 2002 15:26:20 +0200
+
 ruby-serialport (0.3-1) unstable; urgency=low
 
   * Initial Release.
