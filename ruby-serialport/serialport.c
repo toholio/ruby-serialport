@@ -14,9 +14,7 @@
  * http://www.easysw.com/~mike/serial/
  */
 
-
 #include <stdio.h>   /* Standard input/output definitions */
-#include <string.h>  /* String function definitions */
 #include <unistd.h>  /* UNIX standard function definitions */
 #include <fcntl.h>   /* File control definitions */
 #include <errno.h>   /* Error number definitions */
@@ -24,69 +22,45 @@
 #include <sys/ioctl.h>
 
 #include <ruby.h>    /* ruby inclusion */
+#include <rubyio.h>  /* ruby io inclusion */
 
 #define VERSION "0.1"
 
-#define FLOWCONTROL_NONE 	0x0
-#define FLOWCONTROL_HARD 	0x1
-#define FLOWCONTROL_SOFT 	0x2
+#define NONE 	0
+#define HARD 	1
+#define SOFT 	2
 
-#if defined(linux)
-#define CNEW_RTSCTS CRTSCTS
-#endif
-#if 0
-#if defined(linux)
-# include <linux/cdrom.h>
-
-#elif defined(sun) && defined(unix) && defined(__SVR4)
-# include <sys/cdio.h>
-
-#elif defined(__FreeBSD__)
-#include <sys/cdio.h>
-
-#elif defined(__OpenBSD__) || defined(__NetBSD__)
-#include <sys/cdio.h>
-#else
-# error "Your OS isn't supported yet."
-#endif	/* os selection */
-#endif
-typedef struct _SP {
-  int fd;	/* file descriptor */
-  struct termios *params;  /* parameters for the port */
-  struct termios *old_params;  /* old_parameters */
-} SP;
+#define SPACE	0
+#define EVEN	1
+#define ODD	2
 
 VALUE cSerialPort; /* serial port class */
-VALUE eSerialPort; /* serial port error class */ 
-VALUE eSerialPortTimeout; /* serial port timeout error class */ 
 
-static SP *get_sp(obj)
+static int
+sp_get_fd(obj)
   VALUE obj;
 {
-  SP *sp;
-  Data_Get_Struct(obj, SP, sp);
-  if (sp->fd == -1)
-    rb_raise(eSerialPort, "Serial port is not opened.");
-  return sp;
+  OpenFile *fptr;
+
+  GetOpenFile(obj, fptr);
+
+  return (fileno(fptr->f));
 }
 
-static void close_sp(sp)
-  SP *sp;
+static VALUE
+sp_new(class, fd)
+  VALUE class;
+  int fd;
 {
-  tcsetattr(sp->fd, TCSANOW, sp->old_params);
-  close(sp->fd);
-  sp->fd = -1;
-}
-
-static void free_sp(sp)
-  SP *sp;
-{
-  if(sp->fd != -1)
-    close_sp(sp);    
-  free(sp->params);
-  free(sp->old_params);
-  free(sp);
-  return;
+  OpenFile *fp;
+  NEWOBJ(sp, struct RFile);
+  OBJSETUP(sp, class, T_FILE);
+  MakeOpenFile(sp, fp);
+  fp->f = rb_fdopen(fd, "r+");
+  fp->mode = FMODE_READWRITE;
+//  rb_io_synchronized(fp);
+ 
+  return (VALUE)sp;
 }
 
 static void termios_setspeed(t_ios, speed)
@@ -97,99 +71,102 @@ static void termios_setspeed(t_ios, speed)
       cfsetospeed(t_ios, speed);
 }
 
-static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
-  VALUE self, _num_port, _data_rate, _data_bits, _parity, _stop_bits;
+static VALUE sp_init(class, _num_port, _data_rate, _data_bits, _stop_bits, _parity)
+  VALUE class, _num_port, _data_rate, _data_bits, _parity, _stop_bits;
 {
-  SP *sp;
 #if defined(linux)
   char *ports[] = { "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3" };
 #endif
+  int fd;
   int num_port;
-  int data_bits = CS8;
- 
+  int data_bits;
+  struct termios params;
 
   num_port = FIX2INT(_num_port);
-  sp = (SP*)malloc(sizeof(SP));
   
-  sp->fd = open(ports[num_port], O_RDWR | O_NOCTTY | O_NDELAY);
+  fd = open(ports[num_port], O_RDWR | O_NOCTTY | O_NDELAY);
 
-  if (sp->fd == -1)
-    rb_raise(eSerialPort, "Failed to open port %d", num_port);
+  if (fd == -1)
+    rb_sys_fail(ports[num_port]);
 
-  fcntl(sp->fd, F_SETFL, 0); /* enable blocking read */
+  /* enable blocking read */
+  fcntl(fd, F_SETFL, 0);
 
-  sp->old_params = (struct termios*)malloc(sizeof(struct termios));
-  tcgetattr(sp->fd, sp->old_params); /* save current parameters */
-		  
-  sp->params = (struct termios*)malloc(sizeof(struct termios));
-  tcgetattr(sp->fd, sp->params);
+  tcgetattr(fd, &params);
   switch(FIX2INT(_data_rate)) {
-    case 50: termios_setspeed(sp->params, FIX2INT(B50)); break;
+    case 50: termios_setspeed(&params, FIX2INT(B50)); break;
 
-    case 75: termios_setspeed(sp->params, FIX2INT(B75)); break; 
+    case 75: termios_setspeed(&params, FIX2INT(B75)); break; 
 
-    case 110: termios_setspeed(sp->params, FIX2INT(B110)); break;
+    case 110: termios_setspeed(&params, FIX2INT(B110)); break;
 
-    case 134: termios_setspeed(sp->params, FIX2INT(B134)); break;
+    case 134: termios_setspeed(&params, FIX2INT(B134)); break;
 
-    case 150: termios_setspeed(sp->params, FIX2INT(B150)); break;
+    case 150: termios_setspeed(&params, FIX2INT(B150)); break;
 
-    case 200: termios_setspeed(sp->params, FIX2INT(B200)); break;
+    case 200: termios_setspeed(&params, FIX2INT(B200)); break;
 
-    case 300: termios_setspeed(sp->params, FIX2INT(B300)); break;
+    case 300: termios_setspeed(&params, FIX2INT(B300)); break;
 
-    case 600: termios_setspeed(sp->params, FIX2INT(B600)); break;
+    case 600: termios_setspeed(&params, FIX2INT(B600)); break;
 
-    case 1200: termios_setspeed(sp->params, FIX2INT(B1200)); break;
+    case 1200: termios_setspeed(&params, FIX2INT(B1200)); break;
 
-    case 1800: termios_setspeed(sp->params, FIX2INT(B1800)); break;
+    case 1800: termios_setspeed(&params, FIX2INT(B1800)); break;
 
-    case 2400: termios_setspeed(sp->params, FIX2INT(B2400)); break;
+    case 2400: termios_setspeed(&params, FIX2INT(B2400)); break;
 
-    case 4800: termios_setspeed(sp->params, FIX2INT(B4800)); break;
+    case 4800: termios_setspeed(&params, FIX2INT(B4800)); break;
 
-    case 9600: termios_setspeed(sp->params, FIX2INT(B9600)); break;
+    case 9600: termios_setspeed(&params, FIX2INT(B9600)); break;
 
-    case 19200: termios_setspeed(sp->params, FIX2INT(B19200)); break;
+    case 19200: termios_setspeed(&params, FIX2INT(B19200)); break;
 
-    case 38400: termios_setspeed(sp->params, FIX2INT(B38400)); break;
+    case 38400: termios_setspeed(&params, FIX2INT(B38400)); break;
 
-    case 57600: termios_setspeed(sp->params, FIX2INT(B57600)); break;
-
-/*    case 76800: termios_setspeed(sp->params, FIX2INT(B76800)); break;
- */
-    case 115200: termios_setspeed(sp->params, FIX2INT(B115200)); break;
+#ifdef B57600
+    case 57600: termios_setspeed(&params, FIX2INT(B57600)); break;
+#endif
+#ifdef B76800
+    case 76800: termios_setspeed(&params, FIX2INT(B76800)); break;
+#endif
+#ifdef B115200
+    case 115200: termios_setspeed(&params, FIX2INT(B115200)); break;
+#endif
 
     default:
-      close_sp(sp);
+      close(fd);
       rb_raise(rb_eArgError, "Data rate is not supported.");
       break;
   }
   /*
    * Enable the receiver and set localmode
    */
-  sp->params->c_cflag |= (CLOCAL | CREAD);
+  params.c_cflag |= (CLOCAL | CREAD);
   
   /*
    * Set up parity
    */
 
-  if (!strcmp(STR2CSTR(_parity), "none") ||
-    !strcmp(STR2CSTR(_parity), "space")) {
-      sp->params->c_cflag &= ~PARENB;
-      sp->params->c_cflag &= ~CSTOPB;
-  }
-  else if (!strcmp(STR2CSTR(_parity), "even")) {
-      sp->params->c_cflag |= PARENB;
-      sp->params->c_cflag &= ~PARODD;
-      sp->params->c_cflag &= ~CSTOPB;
-  }
-  else if (!strcmp(STR2CSTR(_parity), "odd")) {
-      sp->params->c_cflag |= PARENB;
-      sp->params->c_cflag |= PARODD;
-      sp->params->c_cflag &= ~CSTOPB;
-  } 
+  switch(FIX2INT(_parity)) {
+    case EVEN:
+      params.c_cflag |= PARENB;
+      params.c_cflag &= ~PARODD;
+      params.c_cflag &= ~CSTOPB;
+      break;
 
+    case ODD:
+      params.c_cflag |= PARENB;
+      params.c_cflag |= PARODD;
+      params.c_cflag &= ~CSTOPB;
+      break;
+
+    case NONE:
+    default:
+      params.c_cflag &= ~PARENB;
+      params.c_cflag &= ~CSTOPB;
+      break;
+  }
   /*
    * Set up character size
    */
@@ -204,166 +181,75 @@ static VALUE sp_init(self, _num_port, _data_rate, _data_bits, _stop_bits, _parit
     case 7:
       data_bits = CS7;
       break;
+    case 8:
+    default:
+      data_bits = CS8;
   }
-  sp->params->c_cflag &= ~CSIZE;
-  sp->params->c_cflag |= data_bits;
+  params.c_cflag &= ~CSIZE;
+  params.c_cflag |= data_bits;
 
   /*
    * Set up input type
    */
 
   /* raw */
-  sp->params->c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  params.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
  
-  /* canonical (line-oriented) */
-  
-  /* sp->params->c_lflag |= (ICANON | ECHO | ECHOE); */
+  tcsetattr(fd, TCSANOW, &params);
 
-  tcsetattr(sp->fd, TCSANOW, sp->params);
-  return Data_Wrap_Struct(self, 0, free_sp, sp);
+  return sp_new(class, fd); 
 }
-
-static VALUE sp_close(self)
-  VALUE self;
-{
-  SP *sp;
-
-  sp = get_sp(self);
-  close_sp(sp);
-  return Qnil;
-}
-
-static VALUE sp_read(self)
-  VALUE self;
-{
-  SP *sp;
-  char str[255];
-  int ret;  
-
-
-  sp = get_sp(self);
-  ret = read(sp->fd, &str, 255);
-  if ( ret < 0 )
-    rb_raise(eSerialPort, "Failed to read.");
-  else if (ret == 0)
-    rb_raise(eSerialPortTimeout, "Timeout elapsed.");
- 
-  return rb_str_new(str, ret);
-
-/*  char buf;  
-  char *str;
-  int ret;
-  int size = 0;
-  VALUE final_str;
-#define STR_SIZE 255
-
-  sp = get_sp(self);
-  str = (char*)malloc(STR_SIZE);
-retry:
-  ret = read(sp->fd, &buf, 1);
-  if(ret == 1) {
-    *str++ = buf;
-    size++;
-    if (size < STR_SIZE)
-      goto retry;
-  }
-  
-  final_str = rb_str_new(str, size);
-  free(str);
-  return(final_str);
-*/
-}
-
-static VALUE sp_write(self, str)
-  VALUE self, str;
-{
-  SP *sp;
-  char *src;
-  long size_src;
-  int ret;
-
-  sp = get_sp(self);
-  src = RSTRING(str)->ptr;
-  size_src = RSTRING(str)->len;
-  ret = write(sp->fd, src, size_src);  
-  if (ret < 0)
-    rb_raise(eSerialPort, "Error writing port.");
-  return INT2FIX(ret);
-}
-
 static VALUE sp_set_flow_control(self, val)
   VALUE self, val;
 {
-  int fc;
-  SP *sp;
+  int fd;
+  int flowc;
+  struct termios params;
 
-  sp = get_sp(self);
-  
-  fc = FIX2INT(val);
-  if ( fc == FLOWCONTROL_NONE ) {
-    sp->params->c_cflag &= ~CNEW_RTSCTS;
-    sp->params->c_iflag &= ~(IXON | IXOFF | IXANY);
+  fd = sp_get_fd(self);
+  tcgetattr(fd, &params);
+
+  flowc = FIX2INT(val);
+  if ( flowc == NONE ) {
+    params.c_cflag &= ~CRTSCTS;
+    params.c_iflag &= ~(IXON | IXOFF | IXANY);
   }
   else {
-    if ( fc & FLOWCONTROL_HARD )
-      sp->params->c_cflag |= CNEW_RTSCTS;
-    if ( fc & FLOWCONTROL_SOFT )
-      sp->params->c_iflag |= (IXON | IXOFF | IXANY);
+    if ( flowc & HARD )
+      params.c_cflag |= CRTSCTS;
+    if ( flowc & SOFT )
+      params.c_iflag |= (IXON | IXOFF | IXANY);
   }   
 
-  tcsetattr(sp->fd, TCSANOW, sp->params);
+  tcsetattr(fd, TCSANOW, &params);
   return val;
 }
 static VALUE sp_get_flow_control(self)
   VALUE self;
 {
   int ret;
-  SP *sp;
-  
-  sp = get_sp(self);
+  int fd;
+  struct termios params;
+
+  fd = sp_get_fd(self);
+  tcgetattr(fd, &params);
   ret = 0;
-  if ( sp->params->c_cflag & CNEW_RTSCTS)
-    ret += FLOWCONTROL_HARD;
-  if ( sp->params->c_iflag & (IXON | IXOFF | IXANY))
-    ret += FLOWCONTROL_SOFT;
+  if ( params.c_cflag & CRTSCTS)
+    ret += HARD;
+  if ( params.c_iflag & (IXON | IXOFF | IXANY))
+    ret += SOFT;
  
   return INT2FIX(ret);
 }
-/* timeout */
-static VALUE sp_set_timeout(self, val)
-  VALUE self, val;
-{
-  SP *sp;
 
-  sp = get_sp(self);
-  
-  sp->params->c_cc[VMIN]  = 0;
-  sp->params->c_cc[VTIME] = FIX2INT(val);
-  
-  tcsetattr(sp->fd, TCSANOW, sp->params);
-
-  return val;
- 
-}
-static VALUE sp_get_timeout(self) 
-  VALUE self;
-{
-  SP *sp;
-  int ret;
-  
-  sp = get_sp(self);
-  ret = sp->params->c_cc[VTIME];
-
-  return INT2FIX(ret);
-}
 /* break */
 static VALUE sp_break(self, time)
   VALUE self, time;
 {
-  SP *sp;
-
-  sp = get_sp(self);
-  tcsendbreak(sp->fd, FIX2INT(time));
+  int fd;
+ 
+  fd = sp_get_fd(self);
+  tcsendbreak(fd, FIX2INT(time));
   return Qnil;
 }
 
@@ -371,16 +257,16 @@ static VALUE set_signal(obj, val, sig)
   VALUE obj,val;
   int sig;
 {
-  SP *sp;
   int status;
+  int fd;
 
-  sp = get_sp(obj);
-  ioctl(sp->fd, TIOCMGET, &status);
+  fd = sp_get_fd(obj);
+  ioctl(fd, TIOCMGET, &status);
   if (TYPE(val) == T_FALSE)
     status &= ~sig;
   else 
     status |= sig;
-  ioctl(sp->fd, TIOCMSET, &status);
+  ioctl(fd, TIOCMSET, &status);
   return val;
 }
 
@@ -388,11 +274,11 @@ static int get_signal(obj, sig)
   VALUE obj;
   int sig;
 {
-  SP *sp;
+  int fd;
   int status;
 
-  sp = get_sp(obj);
-  ioctl(sp->fd, TIOCMGET, &status);
+  fd = sp_get_fd(obj);
+  ioctl(fd, TIOCMGET, &status);
   return sig & status;
 }
 /* RTS */
@@ -444,20 +330,17 @@ static VALUE sp_get_ri(self)
 {
   return ( get_signal(self, TIOCM_RI) == 0 ? Qfalse : Qtrue);
 }
+
 void Init_serialport() {
   
-  eSerialPort = rb_define_class("SerialPortError", rb_eStandardError);
-  eSerialPortTimeout = rb_define_class("SerialPortTimeout", eSerialPort);
-  cSerialPort = rb_define_class("SerialPort", rb_cObject);
+  cSerialPort = rb_define_class("SerialPort", rb_cIO);
   rb_define_singleton_method(cSerialPort, "new", sp_init, 5);
-  rb_define_method(cSerialPort, "close", sp_close, 0);
-  rb_define_method(cSerialPort, "read", sp_read, 0);
-  rb_define_method(cSerialPort, "write", sp_write, 1);
+
   rb_define_method(cSerialPort, "flow_control=", sp_set_flow_control, 1);
   rb_define_method(cSerialPort, "flow_control", sp_get_flow_control, 0);
-  rb_define_method(cSerialPort, "timeout=", sp_set_timeout, 1);
-  rb_define_method(cSerialPort, "timeout", sp_get_timeout, 0);
+
   rb_define_method(cSerialPort, "break", sp_break, 1);
+  
   rb_define_method(cSerialPort, "rts?", sp_get_rts, 0);
   rb_define_method(cSerialPort, "rts=", sp_set_rts, 1);
   rb_define_method(cSerialPort, "dtr?", sp_get_dtr, 0);
@@ -467,7 +350,12 @@ void Init_serialport() {
   rb_define_method(cSerialPort, "dcd?", sp_get_dcd, 0);
   rb_define_method(cSerialPort, "ri?", sp_get_ri, 0);
   
-  rb_define_const(cSerialPort, "FLOWCONTROL_NONE", INT2FIX(FLOWCONTROL_NONE));
-  rb_define_const(cSerialPort, "FLOWCONTROL_HARD", INT2FIX(FLOWCONTROL_HARD));
-  rb_define_const(cSerialPort, "FLOWCONTROL_SOFT", INT2FIX(FLOWCONTROL_SOFT));
+  rb_define_const(cSerialPort, "NONE", INT2FIX(NONE));
+  rb_define_const(cSerialPort, "HARD", INT2FIX(HARD));
+  rb_define_const(cSerialPort, "SOFT", INT2FIX(SOFT));
+
+  rb_define_const(cSerialPort, "SPACE", INT2FIX(SPACE));
+  rb_define_const(cSerialPort, "EVEN", INT2FIX(EVEN));
+  rb_define_const(cSerialPort, "ODD", INT2FIX(ODD));
+
 }
