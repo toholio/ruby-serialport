@@ -8,11 +8,9 @@ export DH_VERBOSE=1
 # This is the debhelper compatability version to use.
 export DH_COMPAT=2
 
-GNU_ARCH=$(shell ruby -e 'puts RUBY_PLATFORM')
+#GNU_ARCH=$(shell ruby -e 'puts RUBY_PLATFORM')
 
-RBV=$(shell ruby -e '/(\d+\.\d+).\d+/.match(RUBY_VERSION)[1]')
-
-PACK_NAME=ruby-serialport
+#RBV=1.6
 
 build: build-stamp
 build-stamp:
@@ -26,11 +24,11 @@ build-stamp:
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp
-
+	rm -f build-stamp install-stamp
+	
 	# Add here commands to clean up after the build process.
 	-$(MAKE) clean
-
+	echo $(DEB_HOST_ARCH)
 	dh_clean
 
 install: build
@@ -40,9 +38,9 @@ install: build
 	dh_installdirs
 
 	# Add here commands to install the package into debian/tmp.
-	#	$(MAKE) install DESTDIR=`pwd`/debian/tmp
-	mkdir -p debian/$(PACK_NAME)/usr/lib/ruby/$(RBV)/$(GNU_ARCH)
-	cp serialport.so debian/$(PACK_NAME)/usr/lib/ruby/$(RBV)/$(GNU_ARCH)/
+	$(MAKE) install DESTDIR=`pwd`/debian/ruby-serialport
+#	mkdir -p debian/tmp/$(RBV)/$(GNU_ARCH)
+#	cp serialport.so debian/$(PACKAGE_NAME)/usr/lib/ruby/$(RBV)/$(GNU_ARCH)/
 
 	touch install-stamp
 
