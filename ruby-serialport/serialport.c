@@ -208,6 +208,7 @@ sp_new(class, _port, _data_rate, _data_bits, _stop_bits, _parity)
 
   params.c_oflag = 0;
   params.c_lflag = 0; 
+  params.c_iflag = 0; 
   cfsetispeed(&params, data_rate);
   cfsetospeed(&params, data_rate);
 
