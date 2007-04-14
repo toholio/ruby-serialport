@@ -647,6 +647,7 @@ static VALUE sp_set_modem_params(argc, argv, self)
   VALUE _data_rate, _data_bits, _parity, _stop_bits;
   int use_hash = 0;
   int data_rate, data_bits;
+  _data_rate = _data_bits = _parity = _stop_bits = Qnil;
 
   if (argc == 0)
     return self;
