@@ -15,7 +15,7 @@
  * http://www.easysw.com/~mike/serial/
  */
 
-#define VERSION 	"0.6.1"
+#define VERSION   "0.6.2"
 
 #include <ruby.h>    /* ruby inclusion */
 #include <rubyio.h>  /* ruby io inclusion */
@@ -97,7 +97,7 @@ static VALUE sp_create(class, _port)
     case T_FIXNUM:
       num_port = FIX2INT(_port);
       if (num_port < 0 || num_port > sizeof(ports) / sizeof(ports[0]))
-	rb_raise(rb_eArgError, "illegal port number");
+      rb_raise(rb_eArgError, "illegal port number");
       port = ports[num_port];
       break;
 
