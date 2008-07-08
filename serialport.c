@@ -1538,40 +1538,4 @@ void Init_serialport()
    rb_define_const(cSerialPort, "ODD", INT2FIX(ODD));
 
    rb_define_const(cSerialPort, "VERSION", rb_str_new2(VERSION));
-
-   /* The following definitions are more easily carried out in Ruby */
-   rb_eval_string(
-         "class SerialPort\n"
-
-         "private_class_method(:create)\n"
-
-         "def SerialPort::new(port, *params)\n"
-         "sp = create(port)\n"
-         "begin\n"
-         "sp.set_modem_params(*params)\n"
-         "rescue\n"
-         "sp.close\n"
-         "raise\n"
-         "end\n"
-         "return sp\n"
-         "end\n"
-
-         "def SerialPort::open(port, *params)\n"
-         "sp = create(port)\n"
-         "begin\n"
-         "sp.set_modem_params(*params)\n"
-         "if (block_given?)\n"
-         "rc = yield sp\n"
-         "sp.close\n"
-         "return rc\n"
-         "end\n"
-         "rescue\n"
-         "sp.close\n"
-         "raise\n"
-         "end\n"
-         "return sp\n"
-         "end\n"
-
-         "end\n"
-         );
 }
