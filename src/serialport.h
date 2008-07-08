@@ -18,7 +18,8 @@
 
 #ifndef _RUBY_SERIAL_PORT_H_
 #define _RUBY_SERIAL_PORT_H_
-#define VERSION   "0.7.0"
+
+#define RUBY_SERIAL_PORT_VERSION   "0.7.0"
 
 #include <ruby.h>    /* ruby inclusion */
 #include <rubyio.h>  /* ruby io inclusion */
@@ -56,5 +57,8 @@ struct line_signals
    #define EVEN   1
    #define ODD    2
 #endif
+
+static VALUE sBaud, sDataBits, sStopBits, sParity; /* strings */
+static VALUE sRts, sDtr, sCts, sDsr, sDcd, sRi;
 
 #endif
