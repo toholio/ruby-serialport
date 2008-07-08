@@ -16,51 +16,19 @@
  * http://www.easysw.com/~mike/serial/
  */
 
-#define VERSION   "0.7.0"
-
-#include <ruby.h>    /* ruby inclusion */
-#include <rubyio.h>  /* ruby io inclusion */
-
-struct modem_params
-{
-   int data_rate;
-   int data_bits;
-   int stop_bits;
-   int parity;
-};
-
-struct line_signals
-{
-   int rts;
-   int dtr;
-   int cts;
-   int dsr;
-   int dcd;
-   int ri;
-};
+#include "serialport.h"
 
 VALUE cSerialPort; /* serial port class */
 
 static VALUE sBaud, sDataBits, sStopBits, sParity; /* strings */
 static VALUE sRts, sDtr, sCts, sDsr, sDcd, sRi;
 
-
 #if defined(OS_MSWIN) || defined(OS_BCCWIN)
-
 
 #include <stdio.h>   /* Standard input/output definitions */
 #include <io.h>      /* Low-level I/O definitions */
 #include <fcntl.h>   /* File control definitions */
 #include <windows.h> /* Windows standard function definitions */
-
-#define NONE   0
-#define HARD   1
-#define SOFT   2
-
-#define SPACE  SPACEPARITY
-#define MARK   MARKPARITY
-#define EVEN   EVENPARITY
-#define ODD    ODDPARITY
 
 static char sGetCommState[] = "GetCommState";
 static char sSetCommState[] = "SetCommState";
@@ -657,14 +625,6 @@ static VALUE sp_get_dtr(self)
 #undef HAVE_FLOWCONTROL_HARD
 #endif
 
-#define NONE   0
-#define HARD   1
-#define SOFT   2
-
-#define SPACE  0
-#define MARK   0
-#define EVEN   1
-#define ODD    2
 
 static char sTcgetattr[] = "tcgetattr";
 static char sTcsetattr[] = "tcsetattr";
