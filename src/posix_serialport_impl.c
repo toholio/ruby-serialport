@@ -19,7 +19,7 @@
 #include "serialport.h"
 
 /* Check if we are on a posix compliant system. */
-#if !defined(OS_MSWIN) || !defined(OS_BCCWIN)
+#if !defined(OS_MSWIN) && !defined(OS_BCCWIN)
 
 #include <stdio.h>   /* Standard input/output definitions */
 #include <unistd.h>  /* UNIX standard function definitions */

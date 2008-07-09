@@ -25,6 +25,11 @@
 #include <fcntl.h>   /* File control definitions */
 #include <windows.h> /* Windows standard function definitions */
 
+#ifndef RB_SERIAL_EXPORT
+#define RB_SERIAL_EXPORT __declspec(dllexport)
+//#define RB_SERIAL_EXPORT 
+#endif
+
 static char sGetCommState[] = "GetCommState";
 static char sSetCommState[] = "SetCommState";
 static char sGetCommTimeouts[] = "GetCommTimeouts";
@@ -40,7 +45,7 @@ static HANDLE get_handle_helper(obj)
    return (HANDLE) _get_osfhandle(fileno(fptr->f));
 }
 
-static VALUE sp_create_impl(class, _port)
+VALUE RB_SERIAL_EXPORT sp_create_impl(class, _port)
    VALUE class, _port;
 {
    OpenFile *fp;
@@ -52,6 +57,7 @@ static VALUE sp_create_impl(class, _port)
       "COM1", "COM2", "COM3", "COM4",
       "COM5", "COM6", "COM7", "COM8"
    };
+   //int new_fd;
 
    DCB dcb;
 
@@ -81,10 +87,13 @@ static VALUE sp_create_impl(class, _port)
          break;
    }
 
+   printf("SerialPort => %s\n", port);
    fd = open(port, O_BINARY | O_RDWR);
+   printf("        fd => %i\n", fd);
    if (fd == -1)
       rb_sys_fail(port);
    fh = (HANDLE) _get_osfhandle(fd);
+   printf("        fh => %i\n", fh);
    if (SetupComm(fh, 1024, 1024) == 0)
    {
       close(fd);
@@ -114,12 +123,13 @@ static VALUE sp_create_impl(class, _port)
       rb_sys_fail(sSetCommState);
    }
 
-   fp->f = rb_fdopen(fd, "rb+");
+   errno = 0;
    fp->mode = FMODE_READWRITE | FMODE_BINMODE | FMODE_SYNC;
+   fp->f = fdopen(fd, "rb+");
    return (VALUE) sp;
 }
 
-static VALUE sp_set_modem_params_impl(argc, argv, self)
+VALUE RB_SERIAL_EXPORT sp_set_modem_params_impl(argc, argv, self)
    int argc;
    VALUE *argv, self;
 {
@@ -279,7 +289,7 @@ static VALUE sp_set_modem_params_impl(argc, argv, self)
    return argv[0];
 }
 
-static void get_modem_params_impl(self, mp)
+void RB_SERIAL_EXPORT get_modem_params_impl(self, mp)
    VALUE self;
    struct modem_params *mp;
 {
@@ -299,7 +309,7 @@ static void get_modem_params_impl(self, mp)
    mp->parity = dcb.Parity;
 }
 
-static VALUE sp_set_flow_control_impl(self, val)
+VALUE RB_SERIAL_EXPORT sp_set_flow_control_impl(self, val)
    VALUE self, val;
 {
    HANDLE fh;
@@ -344,7 +354,7 @@ static VALUE sp_set_flow_control_impl(self, val)
    return val;
 }
 
-static VALUE sp_get_flow_control_impl(self)
+VALUE RB_SERIAL_EXPORT sp_get_flow_control_impl(self)
    VALUE self;
 {
    HANDLE fh;
@@ -372,7 +382,7 @@ static VALUE sp_get_flow_control_impl(self)
    return INT2FIX(ret);
 }
 
-static VALUE sp_set_read_timeout_impl(self, val)
+VALUE RB_SERIAL_EXPORT sp_set_read_timeout_impl(self, val)
    VALUE self, val;
 {
    int timeout;
@@ -415,7 +425,7 @@ static VALUE sp_set_read_timeout_impl(self, val)
    return val;
 }
 
-static VALUE sp_get_read_timeout_impl(self)
+VALUE RB_SERIAL_EXPORT sp_get_read_timeout_impl(self)
    VALUE self;
 {
    HANDLE fh;
@@ -438,7 +448,7 @@ static VALUE sp_get_read_timeout_impl(self)
    return INT2FIX(ctout.ReadTotalTimeoutConstant);
 }
 
-static VALUE sp_set_write_timeout_impl(self, val)
+VALUE RB_SERIAL_EXPORT sp_set_write_timeout_impl(self, val)
    VALUE self, val;
 {
    int timeout;
@@ -473,7 +483,7 @@ static VALUE sp_set_write_timeout_impl(self, val)
    return val;
 }
 
-static VALUE sp_get_write_timeout_impl(self)
+VALUE RB_SERIAL_EXPORT sp_get_write_timeout_impl(self)
    VALUE self;
 {
    HANDLE fh;
@@ -507,7 +517,7 @@ static void delay_ms(time)
    CloseHandle(ev);
 }
 
-static VALUE sp_break_impl(self, time)
+VALUE RB_SERIAL_EXPORT sp_break_impl(self, time)
    VALUE self, time;
 {
    HANDLE fh;
@@ -526,7 +536,7 @@ static VALUE sp_break_impl(self, time)
    return Qnil;
 }
 
-static void get_line_signals_helper_helper(obj, ls)
+void RB_SERIAL_EXPORT get_line_signals_helper(obj, ls)
    VALUE obj;
    struct line_signals *ls;
 {
@@ -577,26 +587,26 @@ static VALUE set_signal(obj, val, sigoff, sigon)
    return val;
 }
 
-static VALUE sp_set_rts_impl(self, val)
+VALUE RB_SERIAL_EXPORT sp_set_rts_impl(self, val)
    VALUE self, val;
 {
    return set_signal(self, val, CLRRTS, SETRTS);
 }
 
-static VALUE sp_set_dtr_impl(self, val)
+VALUE RB_SERIAL_EXPORT sp_set_dtr_impl(self, val)
    VALUE self, val;
 {
    return set_signal(self, val, CLRDTR, SETDTR);
 }
 
-static VALUE sp_get_rts_impl(self)
+VALUE RB_SERIAL_EXPORT sp_get_rts_impl(self)
    VALUE self;
 {
    rb_notimplement();
    return self;
 }
 
-static VALUE sp_get_dtr_impl(self)
+VALUE RB_SERIAL_EXPORT sp_get_dtr_impl(self)
    VALUE self;
 {
    rb_notimplement();
