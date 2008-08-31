@@ -1,3 +1,5 @@
+0.7.1 => 31/08/2008:    Change to gemspec creation and fix posix compilation.
+
 0.7.0 => 03/07/2008:    Major Code Cleanup
 
 0.6.1 => 25/03/2003:    Minor changes
