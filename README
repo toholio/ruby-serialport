@@ -11,10 +11,12 @@ and Borland's C++ compilers.
 
 -- Installation --
 
-$ ruby extconf.rb
-$ make
-$ make install
+This gem is hosted at GitHub. Before you can install this, or any other GitHub gem you must
+add it as a repository:
+  gem sources -a http://gems.github.com
 
+Then you can install the gem as normal:
+  sudo gem install toholio-serialport
 
 -- Testing --
 
@@ -151,3 +153,4 @@ GPL
 
 Guillaume Pierronnet <moumar@netcourrier.com>
 Alan Stern <stern@rowland.harvard.edu>
+Tobin Richard <tobin.richard@gmail.com>
