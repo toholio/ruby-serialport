@@ -61,4 +61,22 @@ struct line_signals
 static VALUE sBaud, sDataBits, sStopBits, sParity; /* strings */
 static VALUE sRts, sDtr, sCts, sDsr, sDcd, sRi;
 
+/* Implementation specific functions. */
+VALUE sp_create_impl(VALUE class, VALUE _port);
+VALUE sp_set_modem_params_impl(int argc, VALUE *argv, VALUE self);
+void get_modem_params_impl(VALUE self, struct modem_params *mp);
+VALUE sp_set_flow_control_impl(VALUE self, VALUE val);
+VALUE sp_get_flow_control_impl(VALUE self);
+VALUE sp_set_read_timeout_impl(VALUE self, VALUE val);
+VALUE sp_get_read_timeout_impl(VALUE self);
+VALUE sp_set_write_timeout_impl(VALUE self, VALUE val);
+VALUE sp_get_write_timeout_impl(VALUE self);
+VALUE sp_break_impl(VALUE self, VALUE time);
+void get_line_signals_helper_impl(VALUE obj, struct line_signals *ls);
+VALUE set_signal_impl(VALUE obj, VALUE val, int sig);
+VALUE sp_set_rts_impl(VALUE self, VALUE val);
+VALUE sp_set_dtr_impl(VALUE self, VALUE val);
+VALUE sp_get_rts_impl(VALUE self);
+VALUE sp_get_dtr_impl(VALUE self);
+
 #endif
