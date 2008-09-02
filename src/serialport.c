@@ -20,6 +20,9 @@
 
 VALUE cSerialPort; /* serial port class */
 
+VALUE sBaud, sDataBits, sStopBits, sParity; /* strings */
+VALUE sRts, sDtr, sCts, sDsr, sDcd, sRi;
+
 static VALUE sp_create(class, _port)
    VALUE class, _port;
 {

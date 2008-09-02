@@ -58,8 +58,8 @@ struct line_signals
    #define ODD    2
 #endif
 
-static VALUE sBaud, sDataBits, sStopBits, sParity; /* strings */
-static VALUE sRts, sDtr, sCts, sDsr, sDcd, sRi;
+extern VALUE sBaud, sDataBits, sStopBits, sParity; /* strings */
+extern VALUE sRts, sDtr, sCts, sDsr, sDcd, sRi;
 
 /* Implementation specific functions. */
 VALUE sp_create_impl(VALUE class, VALUE _port);
