@@ -25,10 +25,6 @@
 #include <fcntl.h>   /* File control definitions */
 #include <windows.h> /* Windows standard function definitions */
 
-#ifndef RB_SERIAL_EXPORT
-#define RB_SERIAL_EXPORT __declspec(dllexport)
-//#define RB_SERIAL_EXPORT 
-#endif
 
 static char sGetCommState[] = "GetCommState";
 static char sSetCommState[] = "SetCommState";
@@ -536,7 +532,7 @@ VALUE RB_SERIAL_EXPORT sp_break_impl(self, time)
    return Qnil;
 }
 
-void RB_SERIAL_EXPORT get_line_signals_helper(obj, ls)
+void RB_SERIAL_EXPORT get_line_signals_helper_impl(obj, ls)
    VALUE obj;
    struct line_signals *ls;
 {
