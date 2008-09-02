@@ -23,12 +23,16 @@ VALUE cSerialPort; /* serial port class */
 VALUE sBaud, sDataBits, sStopBits, sParity; /* strings */
 VALUE sRts, sDtr, sCts, sDsr, sDcd, sRi;
 
+/*
+ */
 static VALUE sp_create(class, _port)
    VALUE class, _port;
 {
    return sp_create_impl(class, _port);
 }
 
+/*
+ */
 static VALUE sp_set_modem_params(argc, argv, self)
    int argc;
    VALUE *argv, self;
@@ -36,67 +40,91 @@ static VALUE sp_set_modem_params(argc, argv, self)
    return sp_set_modem_params_impl(argc, argv, self);
 }
 
+/*
+ */
 static VALUE sp_break(self, time)
    VALUE self, time;
 {
    return sp_break_impl(self, time);
 }
 
+/*
+ */
 static VALUE sp_get_dtr(self)
    VALUE self;
 {
    return sp_get_dtr_impl(self);
 }
 
+/*
+ */
 static VALUE sp_get_flow_control(self)
    VALUE self;
 {
    return sp_get_flow_control_impl(self);
 }
 
+/*
+ */
 static VALUE sp_get_read_timeout(self)
    VALUE self;
 {
    return sp_get_read_timeout_impl(self);
 }
 
+/*
+ */
 static VALUE sp_get_rts(self)
    VALUE self;
 {
    return sp_get_rts_impl(self);
 }
 
+/*
+ */
 static VALUE sp_get_write_timeout(self)
    VALUE self;
 {
    return sp_get_write_timeout_impl(self);
 }
 
+/*
+ */
 static VALUE sp_set_dtr(self, val)
 {
    return sp_set_dtr_impl(self, val);
 }
 
+/*
+ */
 static VALUE sp_set_flow_control(self, val)
 {
    return sp_set_flow_control_impl(self, val);
 }
 
+/*
+ */
 static VALUE sp_set_read_timeout(self, val)
 {
    return sp_set_read_timeout_impl(self, val);
 }
 
+/*
+ */
 static VALUE sp_set_rts(self, val)
 {
    return sp_set_rts_impl(self, val);
 }
 
+/*
+ */
 static VALUE sp_set_write_timeout(self, val)
 {
    return sp_set_write_timeout_impl(self, val);
 }
 
+/*
+ */
 static void get_modem_params(self, mp)
    VALUE self;
    struct modem_params *mp;
@@ -104,6 +132,8 @@ static void get_modem_params(self, mp)
    get_modem_params_impl(self, mp);
 }
 
+/*
+ */
 static VALUE sp_set_data_rate(self, data_rate)
    VALUE self, data_rate;
 {
@@ -116,6 +146,8 @@ static VALUE sp_set_data_rate(self, data_rate)
    return data_rate;
 }
 
+/*
+ */
 static VALUE sp_set_data_bits(self, data_bits)
    VALUE self, data_bits;
 {
@@ -128,6 +160,8 @@ static VALUE sp_set_data_bits(self, data_bits)
    return data_bits;
 }
 
+/*
+ */
 static VALUE sp_set_stop_bits(self, stop_bits)
    VALUE self, stop_bits;
 {
@@ -140,6 +174,8 @@ static VALUE sp_set_stop_bits(self, stop_bits)
    return stop_bits;
 }
 
+/*
+ */
 static VALUE sp_set_parity(self, parity)
    VALUE self, parity;
 {
@@ -152,6 +188,8 @@ static VALUE sp_set_parity(self, parity)
    return parity;
 }
 
+/*
+ */
 static VALUE sp_get_data_rate(self)
    VALUE self;
 {
@@ -162,6 +200,8 @@ static VALUE sp_get_data_rate(self)
    return INT2FIX(mp.data_rate);
 }
 
+/*
+ */
 static VALUE sp_get_data_bits(self)
    VALUE self;
 {
@@ -172,6 +212,8 @@ static VALUE sp_get_data_bits(self)
    return INT2FIX(mp.data_bits);
 }
 
+/*
+ */
 static VALUE sp_get_stop_bits(self)
    VALUE self;
 {
@@ -182,6 +224,8 @@ static VALUE sp_get_stop_bits(self)
    return INT2FIX(mp.stop_bits);
 }
 
+/*
+ */
 static VALUE sp_get_parity(self)
    VALUE self;
 {
@@ -192,6 +236,8 @@ static VALUE sp_get_parity(self)
    return INT2FIX(mp.parity);
 }
 
+/*
+ */
 static VALUE sp_get_modem_params(self)
    VALUE self;
 {
@@ -217,6 +263,8 @@ void get_line_signals_helper(obj, ls)
    get_line_signals_helper(obj, ls);
 }
 
+/*
+ */
 static VALUE sp_get_cts(self)
    VALUE self;
 {
@@ -227,6 +275,8 @@ static VALUE sp_get_cts(self)
    return INT2FIX(ls.cts);
 }
 
+/*
+ */
 static VALUE sp_get_dsr(self)
    VALUE self;
 {
@@ -237,6 +287,8 @@ static VALUE sp_get_dsr(self)
    return INT2FIX(ls.dsr);
 }
 
+/*
+ */
 static VALUE sp_get_dcd(self)
    VALUE self;
 {
@@ -247,6 +299,8 @@ static VALUE sp_get_dcd(self)
    return INT2FIX(ls.dcd);
 }
 
+/*
+ */
 static VALUE sp_get_ri(self)
    VALUE self;
 {
@@ -257,6 +311,8 @@ static VALUE sp_get_ri(self)
    return INT2FIX(ls.ri);
 }
 
+/*
+ */
 static VALUE sp_signals(self)
    VALUE self;
 {
