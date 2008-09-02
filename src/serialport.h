@@ -2,6 +2,7 @@
  * Guillaume Pierronnet <moumar@netcourrier.com>
  * Alan Stern <stern@rowland.harvard.edu>
  * Daniel E. Shipton <dshipton@redshiptechnologies.com>
+ * Tobin Richard <tobin.richard@gmail.com>
  *
  * This code is hereby licensed for public consumption under either the
  * GNU GPL v2 or greater.
@@ -19,7 +20,7 @@
 #ifndef _RUBY_SERIAL_PORT_H_
 #define _RUBY_SERIAL_PORT_H_
 
-#define RUBY_SERIAL_PORT_VERSION   "0.7.0"
+#define RUBY_SERIAL_PORT_VERSION   "0.7.2"
 
 #include <ruby.h>    /* ruby inclusion */
 #include <rubyio.h>  /* ruby io inclusion */

@@ -12,7 +12,7 @@ and Borland's C++ compilers.
 -- Installation --
 
 This gem is hosted at GitHub. Before you can install this, or any other GitHub gem you must
-add it as a repository:
+add it as a gem source:
   gem sources -a http://gems.github.com
 
 Then you can install the gem as normal:

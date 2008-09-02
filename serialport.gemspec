@@ -1,6 +1,6 @@
 SPEC = Gem::Specification.new do |s|
   s.name = 'serialport'
-  s.version = '0.7.1'
+  s.version = '0.7.2'
   s.summary  = 'Library for using RS-232 serial ports.'
   s.description = 'SerialPort is a Ruby library that provides a class for using RS-232 serial ports.'
   s.files = [ 'CHANGELOG',

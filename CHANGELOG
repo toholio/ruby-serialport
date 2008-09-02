@@ -1,3 +1,7 @@
+0.7.2 => 02/09/2008:    Fix several Windows and POSIX compilation problems.
+                        Make GCC compile the code without any warnings.
+                        Make RDoc not be so talkative during gem installation.
+
 0.7.1 => 31/08/2008:    Change to gemspec creation and fix posix compilation.
 
 0.7.0 => 03/07/2008:    Major Code Cleanup
