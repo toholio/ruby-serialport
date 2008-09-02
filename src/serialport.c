@@ -260,7 +260,7 @@ void get_line_signals_helper(obj, ls)
    VALUE obj;
    struct line_signals *ls;
 {
-   get_line_signals_helper(obj, ls);
+   get_line_signals_helper_impl(obj, ls);
 }
 
 /*
