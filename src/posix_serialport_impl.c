@@ -636,13 +636,13 @@ VALUE set_signal_impl(obj, val, sig)
 VALUE sp_set_rts_impl(self, val)
    VALUE self, val;
 {
-   return set_signal(self, val, TIOCM_RTS);
+   return set_signal_impl(self, val, TIOCM_RTS);
 }
 
 VALUE sp_set_dtr_impl(self, val)
    VALUE self, val;
 {
-   return set_signal(self, val, TIOCM_DTR);
+   return set_signal_impl(self, val, TIOCM_DTR);
 }
 
 VALUE sp_get_rts_impl(self)
@@ -650,7 +650,7 @@ VALUE sp_get_rts_impl(self)
 {
    struct line_signals ls;
 
-   get_line_signals_helper(self, &ls);
+   get_line_signals_helper_impl(self, &ls);
    return INT2FIX(ls.rts);
 }
 
@@ -659,7 +659,7 @@ VALUE sp_get_dtr_impl(self)
 {
    struct line_signals ls;
 
-   get_line_signals_helper(self, &ls);
+   get_line_signals_helper_impl(self, &ls);
 
    return INT2FIX(ls.dtr);
 }

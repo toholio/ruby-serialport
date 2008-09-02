@@ -210,6 +210,13 @@ static VALUE sp_get_modem_params(self)
    return hash;
 }
 
+void get_line_signals_helper(obj, ls)
+   VALUE obj;
+   struct line_signals *ls;
+{
+   get_line_signals_helper(obj, ls);
+}
+
 static VALUE sp_get_cts(self)
    VALUE self;
 {
